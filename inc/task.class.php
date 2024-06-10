@@ -29,7 +29,8 @@ class PluginReservationTask extends CommonDBTM
 
     public static function addTarget(NotificationTargetReservation $target)
     {
-        $target->addTagToList(['tag' => 'reservation.otheruser',
+        $target->addTagToList([
+            'tag' => 'reservation.otheruser',
             'label' => __('Writer'),
             'value' => true,
         ]);
@@ -138,7 +139,8 @@ class PluginReservationTask extends CommonDBTM
             $reservationitems = $reservation->getConnexityItem('reservationitem', 'reservationitems_id');
             $item = $reservationitems->getConnexityItem($reservationitems->fields['itemtype'], 'items_id');
 
-            $conflict_reservations = PluginReservationReservation::getAllReservations(["`begin` >= '" . $reservation->fields['end'] . "'",
+            $conflict_reservations = PluginReservationReservation::getAllReservations([
+                "`begin` >= '" . $reservation->fields['end'] . "'",
                 "`begin` <= '" . $end . "'",
                 "effectivedate is null",
                 "reservationitems_id = " . $res['reservationitems_id'],
@@ -250,8 +252,8 @@ class PluginReservationTask extends CommonDBTM
             $task->log("setlocale failed");
         }
 
-        $reservations_list = PluginReservationReservation::getAllReservations(["`baselinedate` < '" . $now . "'", 'effectivedate is null']);
-
+        $yesterday = date('Y-m-d H:i:s', strtotime('-24 hours'));
+        $reservations_list = PluginReservationReservation::getAllReservations(["`end` < '" . $now . "'", "`end` > '" . $yesterday . "'"]);
         foreach ($reservations_list as $reservation) {
             $resObj = new Reservation();
             $resObj->getFromDB($reservation['reservations_id']);
