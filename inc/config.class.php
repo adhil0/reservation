@@ -41,6 +41,14 @@ class PluginReservationConfig extends CommonDBTM
         $DB->query($query) or die($DB->error());
     }
 
+    public function setMailAutomaticActionExpirations($value = 1)
+    {
+        global $DB;
+
+        $query = "UPDATE `glpi_crontasks` SET state='" . $value . "' WHERE name = 'sendMailUpcomingExpirations'";
+        $DB->query($query) or die($DB->error());
+    }
+
     public function showForm($ID, array $option = [])
     {
         echo "<form id=\"formPluginReservationConfigs\" method='post' action='" . $this->getFormURL() . "'>";

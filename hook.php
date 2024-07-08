@@ -128,6 +128,15 @@ function plugin_reservation_install()
         );
     }
 
+    if (!$cron->getFromDBbyName('PluginReservationTask', 'sendMailUpcomingExpirations')) {
+        CronTask::Register(
+            'PluginReservationTask',
+            'sendMailUpcomingExpirations',
+            DAY_TIMESTAMP,
+            ['hourmin' => 23, 'hourmax' => 24, 'mode' => 2, 'logs_lifetime' => 30, 'state' => 0]
+        );
+    }
+
     // update event to new event type to preserve previous behaviour
     $query = "UPDATE `glpi_notifications`
    SET

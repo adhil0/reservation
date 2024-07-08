@@ -306,6 +306,10 @@ msgid "User Reservation Expired (plugin)"
 msgstr ""
 
 #: inc/task.class.php:14
+msgid "User Reservation Expiring in 24 Hours (plugin)"
+msgstr "User Reservation Expiring in 24 Hours (plugin)"
+
+#: inc/task.class.php:15
 msgid "User Reservation Not Checkin (plugin)"
 msgstr ""
 
