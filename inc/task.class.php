@@ -13,6 +13,7 @@ class PluginReservationTask extends CommonDBTM
         $target->events['plugin_reservation_conflict_previous_user'] = __("Reservation Conflict When Extended, previous user (plugin)", "reservation");
         $target->events['plugin_reservation_expiration'] = __("User Reservation Expired (plugin)", "reservation");
         $target->events['plugin_reservation_upcoming_expiration'] = __("User Reservation Expiring in 24 Hours (plugin)", "reservation");
+        $target->events['plugin_reservation_upcoming_expiration_weekly'] = __("User Reservation Expiring in 1 Week (plugin)", "reservation");        
         $target->events['plugin_reservation_not_checkin'] = __("User Reservation Not Checkin (plugin)", "reservation");
         $target->events['plugin_reservation_checkin'] = __("Reservation Checkin (plugin)", "reservation");
     }
@@ -50,6 +51,8 @@ class PluginReservationTask extends CommonDBTM
                 return ['description' => __('Send an e-mail to users with expired reservations', 'reservation') . " (" . __('plugin') . ")"];
             case "sendMailUpcomingExpirations":
                 return ['description' => __('Send an e-mail to users with upcoming expired reservations', 'reservation') . " (" . __('plugin') . ")"];
+            case "sendMailUpcomingExpirationsWeekly":
+                return ['description' => __('Send an e-mail to users with upcoming expired reservations weekly', 'reservation') . " (" . __('plugin') . ")"];
         }
     }
 
@@ -247,6 +250,12 @@ class PluginReservationTask extends CommonDBTM
         $task->setVolume($res);
         return $res;
     }
+    public static function cronSendMailUpcomingExpirationsWeekly($task)
+    {
+        $res = self::sendMailUpcomingExpirationsWeekly($task);
+        $task->setVolume($res);
+        return $res;
+    }
 
     public static function sendMailLateReservations($task)
     {
@@ -311,13 +320,36 @@ class PluginReservationTask extends CommonDBTM
         }
         return $result;
     }
+
+    public static function sendMailUpcomingExpirationsWeekly($task)
+    {
+        global $DB, $CFG_GLPI;
+        $result = 0;
+
+        $time = time();
+        $time -= ($time % MINUTE_TIMESTAMP);
+
+        $errlocale = setlocale(LC_TIME, 'fr_FR.utf8', 'fra');
+        if (!$errlocale) {
+            $task->log("setlocale failed");
+        }
+
+        $weekStart = date('Y-m-d H:i:s', strtotime('+7 days'));
+        $weekEnd = date('Y-m-d H:i:s', strtotime('+8 days'));
+        $reservations_list = PluginReservationReservation::getAllReservations(["`end` > '" . $weekStart . "'", "`end` < '" . $weekEnd . "'"]);
+        foreach ($reservations_list as $reservation) {
+            $resObj = new Reservation();
+            $resObj->getFromDB($reservation['reservations_id']);
+            if (NotificationEvent::raiseEvent('plugin_reservation_upcoming_expiration_weekly', $resObj)) {
+                $task->setVolume($result++);
+                $logtext = sprintf(__('Sending e-mail for reservation %1$s', 'reservation'), $reservation['reservations_id']);
+                $logtext = $logtext . sprintf(__('Expected return time was : %1$s'), $reservation['baselinedate']);
+                $task->log($logtext);
+                Event::log($reservation['reservations_id'], "Reservation", 4, "inventory", __('Sending an e-mail', 'reservation'));
+            } else {
+                $task->log(__('Could not send notification', 'reservation'));
+            }
+        }
+        return $result;
+    }
 }
-
-// Duplicate the following, and all of their references:
-// sendmaillatereservations - gathers reservations that qualify and triggers event -> notification
-// user reservation expired - name of event
-// plugin_reservation_expiration - name of event
-// setmailautomaticaction - sets automatic
-
-// event triggers notification
-// sendmaillatereservation raises event, which triggers notificatoin
